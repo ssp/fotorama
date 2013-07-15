@@ -599,6 +599,9 @@ jQuery.Fotorama = function ($fotorama, opts) {
         if (dataFrame.video) {
           $frame.append($videoPlay.clone());
         }
+  	    if (dataFrame.caption) {
+		  $('<div class="' + captionClass + '"></div>').append(dataFrame.caption).appendTo($frame);
+	    }
       }
     });
   }
