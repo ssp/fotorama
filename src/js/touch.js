@@ -7,6 +7,7 @@ function extendEvent (e) {
   var touch = (e.touches || [])[0] || e;
   e._x = touch.pageX;
   e._y = touch.clientY;
+  e._now = $.now();
 }
 
 function touch ($el, options) {
@@ -18,11 +19,13 @@ function touch ($el, options) {
       controlTouch,
       touchFLAG,
       targetIsSelectFLAG,
-      targetIsLinkFlag;
+      targetIsLinkFlag,
+      tolerance,
+      moved;
 
   function onStart (e) {
     $target = $(e.target);
-    tail.checked = targetIsSelectFLAG = targetIsLinkFlag = false;
+    tail.checked = targetIsSelectFLAG = targetIsLinkFlag = moved = false;
 
     if (touchEnabledFLAG
         || tail.flow
@@ -33,12 +36,14 @@ function touch ($el, options) {
 
     touchFLAG = e.type === 'touchstart';
     targetIsLinkFlag = $target.is('a, a *', el);
+    controlTouch = tail.control;
+
+    tolerance = (tail.noMove || tail.noSwipe || controlTouch) ? 16 : !tail.snap ? 4 : 0;
 
     extendEvent(e);
 
     startEvent = lastEvent = e;
     moveEventType = e.type.replace(/down|start/, 'move').replace(/Down/, 'Move');
-    controlTouch = tail.control;
 
     (options.onStart || noop).call(el, e, {control: controlTouch, $target: $target});
 
@@ -53,6 +58,7 @@ function touch ($el, options) {
         || moveEventType !== e.type
         || !touchEnabledFLAG) {
       touchEnabledFLAG && onEnd();
+      (options.onTouchEnd || noop)();
       return;
     }
 
@@ -74,11 +80,18 @@ function touch ($el, options) {
       (options.onMove || noop).call(el, e, {touch: touchFLAG});
     }
 
+    if (!moved && Math.sqrt(Math.pow(xDiff, 2) + Math.pow(yDiff, 2)) > tolerance) {
+      moved = true;
+    }
+
     tail.checked = tail.checked || xWin || yWin;
   }
 
   function onEnd (e) {
     //console.time('touch.js onEnd');
+
+    (options.onTouchEnd || noop)();
+
     var _touchEnabledFLAG = touchEnabledFLAG;
     tail.control = touchEnabledFLAG = false;
 
@@ -95,7 +108,8 @@ function touch ($el, options) {
     preventEventTimeout = setTimeout(function () {
       preventEvent = false;
     }, 1000);
-    (options.onEnd || noop).call(el, {moved: tail.checked, $target: $target, control: controlTouch, touch: touchFLAG, startEvent: startEvent, aborted: !e || e.type === 'MSPointerCancel'});
+
+    (options.onEnd || noop).call(el, {moved: moved, $target: $target, control: controlTouch, touch: touchFLAG, startEvent: startEvent, aborted: !e || e.type === 'MSPointerCancel'});
     //console.timeEnd('touch.js onEnd');
   }
 
@@ -114,26 +128,24 @@ function touch ($el, options) {
   }
 
   if (MS_POINTER) {
-    el[ADD_EVENT_LISTENER]('MSPointerDown', onStart, false);
-    document[ADD_EVENT_LISTENER]('MSPointerMove', onMove, false);
-    document[ADD_EVENT_LISTENER]('MSPointerCancel', onEnd, false);
-    document[ADD_EVENT_LISTENER]('MSPointerUp', onEnd, false);
+    addEvent(el, 'MSPointerDown', onStart);
+    addEvent(document, 'MSPointerMove', onMove);
+    addEvent(document,'MSPointerCancel', onEnd);
+    addEvent(document, 'MSPointerUp', onEnd);
   } else {
-    if (el[ADD_EVENT_LISTENER]) {
-      el[ADD_EVENT_LISTENER]('touchstart', onStart, false);
-      el[ADD_EVENT_LISTENER]('touchmove', onMove, false);
-      el[ADD_EVENT_LISTENER]('touchend', onEnd, false);
+    addEvent(el, 'touchstart', onStart);
+    addEvent(el, 'touchmove', onMove);
+    addEvent(el, 'touchend', onEnd);
 
-      document[ADD_EVENT_LISTENER]('touchstart', onOtherStart, false);
-      document[ADD_EVENT_LISTENER]('touchend', onOtherEnd, false);
-      document[ADD_EVENT_LISTENER]('touchcancel', onOtherEnd, false);
-      window[ADD_EVENT_LISTENER]('scroll', onOtherEnd, false);
-    }
+    addEvent(document, 'touchstart', onOtherStart);
+    addEvent(document, 'touchend', onOtherEnd);
+    addEvent(document, 'touchcancel', onOtherEnd);
 
-    $el.on('mousedown', onStart);
-    $DOCUMENT
-        .on('mousemove', onMove)
-        .on('mouseup', onEnd);
+    addEvent(window, 'scroll', onOtherEnd);
+
+    addEvent(el, 'mousedown', onStart);
+    addEvent(document, 'mousemove', onMove);
+    addEvent(document, 'mouseup', onEnd);
   }
 
   $el.on('click', 'a', function (e) {

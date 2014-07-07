@@ -13,6 +13,10 @@
 	<script src="../out/fotorama.js"></script>
 
   <script type="text/javascript">
+    console = window.console || {};
+    console.time = console.time || $.noop;
+    console.timeEnd = console.timeEnd || $.noop;
+
     $(function () {
       f = $('.fotorama').data('fotorama');
     })

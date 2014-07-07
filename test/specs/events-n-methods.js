@@ -57,29 +57,29 @@ describe('Events', function () {
     expect(e.showend.i).toBe(1);
   });
 
-  it('fotorama:load & .show(\'>\')', function () {
+  it('fotorama:load & .show(\'>\')', function (done) {
     waitsFor(function () {
       return e.load && e.load.i === 2;
-    }, 'fotorama:load should be called 2 times', 1000);
+    }, function () {
+      fotorama.show('>');
+      expect(e.show.i).toBe(2);
+      expect(fotorama.activeIndex).toBe(1);
+      // auto event, no touch
+      expect(e.show.extra.user).toBeUndefined();
+      expect(e.show.extra.time).toBe(fotorama.options.transitionduration);
 
-    fotorama.show('>');
-    expect(e.show.i).toBe(2);
-    expect(fotorama.activeIndex).toBe(1);
-    // auto event, no touch
-    expect(e.show.extra.user).toBeUndefined();
-    expect(e.show.extra.time).toBe(fotorama.options.transitionduration);
+      waitsFor(function () {
+        return e.load.i === 3;
+      }, function () {
+        expect(e.load.extra.index).toBe(2);
+        expect(e.showend.i).toBe(2);
 
-    waitsFor(function () {
-      return e.load.i === 3;
-    }, 'fotorama:load should be called 3 times after .show()', 1000);
-
-    runs(function () {
-      expect(e.load.extra.index).toBe(2);
-      expect(e.showend.i).toBe(2);
+        done();
+      });
     });
   });
 
-  it('<, <<, >>, fotorama:error', function () {
+  it('<, <<, >>, fotorama:error', function (done) {
     fotorama.show('<'); // e.show.i = 3
     expect(fotorama.activeIndex).toBe(0);
     fotorama.show('>'); // e.show.i = 4
@@ -87,18 +87,14 @@ describe('Events', function () {
     fotorama.show('<<'); // e.show.i = 5
     expect(fotorama.activeIndex).toBe(0);
 
-    waitsFor(function () {
-      return e.error && e.error.i === 1;
-    }, 'fotorama:error', 1000);
-
     fotorama.show('>>'); // e.show.i = 6; e.showend.i = 3
     expect(fotorama.activeIndex).toBe(4);
 
-    runs(function () {
-      // e.show.i = 7; e.showend.i = 4 (because of error)
-
-      expect(e.show.i).toBe(7);
-      expect(e.showend.i).toBe(4);
+    waitsFor(function () {
+      return e.error && e.error.i === 1;
+    }, function () {
+      expect(e.show.i).toBe(6);
+      expect(e.showend.i).toBe(3);
 
       // extra data on fotorama:error
       expect(e.error.extra.index).toBe(3);
@@ -108,27 +104,34 @@ describe('Events', function () {
       // error frame was removed
       expect(fotorama.size).toBe(4);
       expect(fotorama.activeIndex).toBe(3);
+
+      done();
     });
   });
 
-  it('.startAutoplay(interval)', function () {
+  it('.startAutoplay(interval)', function (done) {
     expect(e.startautoplay).toBeUndefined();
     fotorama.startAutoplay(500);
     expect(e.startautoplay.i).toBe(1);
 
     // other api calls don’s disturb autoplay
-    fotorama.setOptions({navPosition: 'top'}); // e.show.i++
+    fotorama.setOptions({navPosition: 'top'});
 
     waitsFor(function () {
       return fotorama.activeIndex === 1;
-    }, 'Autoplay rewinds to the start and continue', 500 * 2 + 333 + 100);
-
-    runs(function () {
-      expect(e.show.i).toBe(10);
+    }, function () {
+      expect(e.show.i).toBe(8);
+      done();
     });
+
+
+
+    //runs(function () {
+
+    //});
   });
 
-  it('.stopAutoplay()', function () {
+  it('.stopAutoplay()', function (done) {
     expect(e.stopautoplay).toBeUndefined();
     fotorama.stopAutoplay();
     expect(e.startautoplay.i).toBe(1);
@@ -137,23 +140,21 @@ describe('Events', function () {
 
     var checked, index = fotorama.activeIndex;
 
-    runs(function () {
-      setTimeout(function () {
-        checked = true;
-      }, 600);
-    });
+    setTimeout(function () {
+      checked = true;
+    }, 600);
 
     waitsFor(function () {
       return checked;
-    }, 'Just wait...', 700);
-
-    runs(function () {
+    }, function () {
       // it is really stopped
       expect(fotorama.activeIndex).toBe(index);
+
+      done();
     });
   });
 
-  it('fullscreen events', function () {
+  it('fullscreen events', function (done) {
     fotorama.requestFullScreen();
     expect(e.fullscreenenter).toBeUndefined();
 
@@ -165,14 +166,20 @@ describe('Events', function () {
 
     waitsFor(function () {
       return fotorama.fullScreen;
-    }, 'Waiting for fotorama.fullScreen', 10);
-
-    runs(function () {
+    }, function () {
       fotorama.cancelFullScreen();
       expect(e.fullscreenenter.i).toBe(1);
       expect(e.fullscreenexit.i).toBe(1);
       expect(fotorama.fullScreen).toBe(false);
+
+      done();
     });
+
+
+
+    //runs(function () {
+
+    //});
 
   });
 
@@ -231,6 +238,8 @@ describe('Events', function () {
   });
 
   it('resizable', function () {
+    fotorama.resize({maxwidth: null});
+
     var $stage = $('.fotorama__stage', $fotorama);
 
     expect($stage.width()).toEqual(700);
@@ -249,9 +258,9 @@ describe('Events', function () {
     expect(fotorama.startAutoplay()).toEqual(fotorama.stopAutoplay());
     expect(fotorama.requestFullScreen()).toEqual(fotorama.cancelFullScreen());
     expect(fotorama.playVideo()).toEqual(fotorama.stopVideo());
-    expect(fotorama.load()).toEqual(fotorama.push({}));
-    expect(fotorama.pop()).toEqual(fotorama.shift());
-    expect(fotorama.unshift({})).toEqual(fotorama.reverse());
+    expect(fotorama.load()).toEqual(fotorama.push({img: 'test/i/okonechnikov/19-lo.jpg'}));
+    //expect(fotorama.pop()).toEqual(fotorama.shift());
+    expect(fotorama.unshift({img: 'test/i/okonechnikov/11-lo.jpg'})).toEqual(fotorama.reverse());
     expect(fotorama.sort()).toEqual(fotorama.splice());
   });
 

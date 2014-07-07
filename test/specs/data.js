@@ -18,7 +18,7 @@ describe('Initialization with data', function () {
     expect(fotorama.data.length).toEqual(3);
   });
 
-  it('can be initialized dinamically', function () {
+  it('can be initialized dinamically', function (done) {
     var api;
     $('<div class="gallery"></div>')
         .on('fotorama:ready', function (e, fotorama) {
@@ -35,11 +35,11 @@ describe('Initialization with data', function () {
 
     waitsFor(function () {
       return api;
-    }, 'Waits for fotorama initialization...', 100);
-
-    runs(function () {
+    }, function () {
       expect(api.data[0].img).toBe('test/i/okonechnikov/4-lo.jpg');
       expect($('.gallery .fotorama__wrap').width()).toBe(700);
+
+      done();
     });
   });
 
@@ -65,5 +65,24 @@ describe('Initialization with data', function () {
     fotorama1.show({index: '>>', time: 0});
 
     expect(fotorama1.data).not.toEqual(fotorama2.data);
+  });
+
+  it('fotorama.load(data) is ok too', function (done) {
+    var data = [
+          {img: 'test/i/okonechnikov/6-lo.jpg'},
+          {img: 'test/i/okonechnikov/7-lo.jpg'},
+          {img: 'test/i/okonechnikov/8-lo.jpg'},
+          {img: 'test/i/okonechnikov/9-lo.jpg'}
+        ],
+        $rama = $('<div class="fotorama"></div>').appendTo('body').fotorama(),
+        rama = $rama.data('fotorama');
+
+    $rama.on('fotorama:show', function (e, fotorama) {
+      expect(fotorama).toBe(rama);
+      done();
+    });
+
+    rama.load(data);
+
   });
 });

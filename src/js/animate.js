@@ -1,6 +1,10 @@
 function slide ($el, options) {
-  var elPos = Math.round(options.pos),
-      onEndFn = options.onEnd || noop;
+  var elData = $el.data(),
+      elPos = Math.round(options.pos),
+      onEndFn = function () {
+        elData.sliding = false;
+        (options.onEnd || noop)();
+      };
 
   if (typeof options.overPos !== 'undefined' && options.overPos !== options.pos) {
     elPos = options.overPos;
@@ -10,8 +14,10 @@ function slide ($el, options) {
   }
 
   console.time('var translate = $.extend');
-  var translate = $.extend(getTranslate(elPos, options._001), options.width && {width: options.width});
+  var translate = $.extend(getTranslate(elPos/*, options._001*/), options.width && {width: options.width});
   console.timeEnd('var translate = $.extend');
+
+  elData.sliding = true;
 
   if (CSS3) {
     $el.css($.extend(getDuration(options.time), translate));
@@ -51,18 +57,18 @@ function fade ($el1, $el2, $frames, options, fadeStack, chain) {
       },
       time = options.time / (chain || 1);
 
-  $frames
-      .not($el1.addClass(fadeRearClass).removeClass(fadeFrontClass))
-      .not($el2.addClass(fadeFrontClass).removeClass(fadeRearClass))
-      .removeClass(fadeRearClass + ' ' + fadeFrontClass);
+  $frames.removeClass(fadeRearClass + ' ' + fadeFrontClass);
 
-
-  $el1.stop();
-  $el2.stop();
+  $el1
+      .stop()
+      .addClass(fadeRearClass);
+  $el2
+      .stop()
+      .addClass(fadeFrontClass);
 
   crossfadeFLAG && _$el2 && $el1.fadeTo(0, 0);
 
-  $el1.fadeTo(crossfadeFLAG ? time : 1, 1, crossfadeFLAG && onEndFn);
+  $el1.fadeTo(crossfadeFLAG ? time : 0, 1, crossfadeFLAG && onEndFn);
   $el2.fadeTo(time, 0, onEndFn);
 
   (_$el1 && crossfadeFLAG) || _$el2 || onEndFn();

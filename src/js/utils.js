@@ -16,10 +16,10 @@ function readPosition ($el) {
   }
 }
 
-function getTranslate (pos, _001) {
+function getTranslate (pos/*, _001*/) {
   var obj = {};
   if (CSS3) {
-    obj.transform = 'translate3d(' + (pos + (_001 ? 0.001 : 0)) + 'px,0,0)'; // 0.001 to remove Retina artifacts
+    obj.transform = 'translate3d(' + (pos/* + (_001 ? 0.001 : 0)*/) + 'px,0,0)'; // 0.001 to remove Retina artifacts
   } else {
     obj.left = pos;
   }
@@ -38,11 +38,18 @@ function numberFromPercent (value) {
   return /%$/.test(value) && numberFromMeasure(value, '%');
 }
 
+function numberFromWhatever (value, whole) {
+  return numberFromPercent(value) / 100 * whole || numberFromMeasure(value);
+}
+
 function measureIsValid (value) {
   return (!!numberFromMeasure(value) || !!numberFromMeasure(value, '%')) && value;
 }
 
 function getPosByIndex (index, side, margin, baseIndex) {
+  console.log('getPosByIndex', index, side, margin, baseIndex);
+  console.log((index - (baseIndex || 0)) * (side + (margin || 0)));
+
   return (index - (baseIndex || 0)) * (side + (margin || 0));
 }
 
@@ -63,9 +70,9 @@ function bindTransitionEnd ($el) {
         msTransition: 'MSTransitionEnd',
         transition: 'transitionend'
       };
-  el.addEventListener(transitionEndEvent[Modernizr.prefixed('transition')], function (e) {
+  addEvent(el, transitionEndEvent[Modernizr.prefixed('transition')], function (e) {
     elData.tProp && e.propertyName.match(elData.tProp) && elData.onEndFn();
-  }, false);
+  });
   elData.tEnd = true;
 }
 
@@ -93,7 +100,7 @@ function afterTransition ($el, property, fn, time) {
 }
 
 
-function stop ($el, left, _001) {
+function stop ($el, left/*, _001*/) {
   if ($el.length) {
     var elData = $el.data();
     if (CSS3) {
@@ -107,7 +114,7 @@ function stop ($el, left, _001) {
       return readPosition($el);
     });
 
-    $el.css(getTranslate(lockedLeft, _001));//.width(); // `.width()` for reflow
+    $el.css(getTranslate(lockedLeft/*, _001*/));//.width(); // `.width()` for reflow
     return lockedLeft;
   }
 }
@@ -129,7 +136,7 @@ function edgeResistance (pos, edge) {
 }
 
 function getProtocol () {
-  getProtocol.p = getProtocol.p || (location.protocol === 'https://' ? 'https://' : 'http://');
+  getProtocol.p = getProtocol.p || (location.protocol === 'https:' ? 'https://' : 'http://');
   return getProtocol.p;
 }
 
@@ -169,7 +176,7 @@ function findVideoId (href, forceVideo) {
     type = 'custom';
   }
 
-  return id ? {id: id, type: type, s: href.search.replace(/^\?/, '')} : false;
+  return id ? {id: id, type: type, s: href.search.replace(/^\?/, ''), p: getProtocol()} : false;
 }
 
 function getVideoThumbs (dataFrame, data, fotorama) {
@@ -330,8 +337,8 @@ function fit ($el, measuresToFit, method) {
     $el.css({
       width: Math.ceil(width),
       height: Math.ceil(height),
-      marginLeft: Math.floor(-width / 2),
-      marginTop: Math.floor(-height / 2)
+      left: Math.floor(measuresToFit.w / 2 - width / 2),
+      top: Math.floor(measuresToFit.h / 2 - height / 2)
     });
 
     elData.l = {
@@ -341,7 +348,7 @@ function fit ($el, measuresToFit, method) {
       w: measuresToFit.w,
       h: measuresToFit.h,
       m: method
-    }
+    };
   }
 
   return true;
@@ -396,12 +403,13 @@ function smartClick ($el, fn, _options) {
         (_options.onStart || noop).call(this, e);
       },
       onMove: _options.onMove || noop,
+      onTouchEnd: _options.onTouchEnd || noop,
       onEnd: function (result) {
-        if (result.moved || _options.tail.checked) return;
+        console.log('smartClick → result.moved', result.moved);
+        if (result.moved) return;
         fn.call(this, startEvent);
       }
-    }), _options.tail);
-
+    }), {noMove: true});
   });
 }
 
@@ -434,10 +442,10 @@ function clone (array) {
       });
 }
 
-function lockScroll (left, top) {
-  $WINDOW
-    .scrollLeft(left)
-    .scrollTop(top);
+function lockScroll ($el, left, top) {
+  $el
+    .scrollLeft(left || 0)
+    .scrollTop(top || 0);
 }
 
 function optionsToLowerCase (options) {
@@ -462,8 +470,33 @@ function getRatio (_ratio) {
   }
 }
 
+function addEvent (el, e, fn, bool) {
+  if (!e) return;
+  el.addEventListener ? el.addEventListener(e, fn, !!bool) : el.attachEvent('on'+e, fn);
+}
+
+function elIsDisabled (el) {
+  return !!el.getAttribute('disabled');
+}
+
+function disableAttr (FLAG) {
+  return {tabindex: FLAG * -1 + '', disabled: FLAG};
+}
+
+function addEnterUp (el, fn) {
+  addEvent(el, 'keyup', function (e) {
+    elIsDisabled(el) || e.keyCode == 13 && fn.call(el, e);
+  });
+}
+
+function addFocus (el, fn) {
+  addEvent(el, 'focus', el.onfocusin = function (e) {
+    fn.call(el, e);
+  }, true);
+}
+
 function stopEvent (e, stopPropagation) {
-  e.preventDefault();
+  e.preventDefault ? e.preventDefault() : (e.returnValue = false);
   stopPropagation && e.stopPropagation();
 }
 

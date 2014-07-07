@@ -12,6 +12,7 @@ meta: {
     'src/js/_.js',
     'src/js/modernizr.js',
     'src/js/fullscreen.js',
+    'src/js/spin.js',
     'src/js/bez.js',
     'src/js/basevars.js',
     'src/js/utils.js',
@@ -23,6 +24,7 @@ meta: {
     'src/js/fn-fotorama.js',
     'src/js/instances.js',
     'src/js/cache.js',
+    'src/js/measures.js',
     'src/templates/compiled.js',
     'src/js/auto-initialization.js',
     'src/js/outro.js'
@@ -45,6 +47,9 @@ jst: {
   }
 },
 watch: {
+  options: {
+    atBegin: true
+  },
   jst: {
     files: 'src/templates/*.jst',
     tasks: ['jst', 'replace:jst']
@@ -127,6 +132,31 @@ copy: {
         dest: '.fotorama-bower/example.html'
       }
     ]
+  },
+  cdnjs: {
+    path: '/Users/artpolikarpov/Projects/Clone/cdnjs/ajax/libs/fotorama',
+    files: [
+      {
+        src: 'out/fotorama.css',
+        dest: '<%= copy.cdnjs.path %>/<%= pkg.version %>/fotorama.css'
+      },
+        {
+        src: 'out/fotorama.png',
+        dest: '<%= copy.cdnjs.path %>/<%= pkg.version %>/fotorama.png'
+      },
+      {
+        src: 'out/fotorama@2x.png',
+        dest: '<%= copy.cdnjs.path %>/<%= pkg.version %>/fotorama@2x.png'
+      },
+      {
+        src: 'out/fotorama.js',
+        dest: '<%= copy.cdnjs.path %>/<%= pkg.version %>/fotorama.js'
+      },
+      {
+        src: 'fotorama.jquery.json',
+        dest: '<%= copy.cdnjs.path %>/package.json'
+      }
+    ]
   }
 },
 concat: {
@@ -140,7 +170,7 @@ concat: {
   },
   css: {
     files: {
-      'out/fotorama.uncompressed.css': 'out/fotorama.css'
+      'out/fotorama.dev.css': 'out/fotorama.css'
     },
     options: {
       banner: '<%= meta.banner %>'
@@ -153,7 +183,9 @@ cssmin: {
       'out/fotorama.css': 'out/fotorama.css'
     },
     options: {
-      banner: '<%= meta.banner.replace(/\\n$/, "") %>'
+      banner: '<%= meta.banner.replace(/\\n$/, "") %>',
+      report: 'gzip',
+      compatibility: 'ie7'
     }
   }
 },
@@ -177,7 +209,7 @@ replace: {
   },
   console: {
     files: {
-      'out/fotorama.uncompressed.js': 'out/fotorama.js'
+      'out/fotorama.dev.js': 'out/fotorama.js'
     },
     options: {
       patterns: [
@@ -232,10 +264,11 @@ replace: {
 uglify: {
   min: {
     options: {
-      banner: '<%= meta.banner %>'
+      banner: '<%= meta.banner %>',
+      report: 'gzip'
     },
     files: {
-      'out/fotorama.js': 'out/fotorama.uncompressed.js'
+      'out/fotorama.js': 'out/fotorama.dev.js'
     }
   }
 },
@@ -243,15 +276,15 @@ clean: {
   zip: ['out/fotorama*.zip']
 },
 compress: {
-  uncompressed: {
+  dev: {
     options: {
-      archive: 'out/fotorama-<%= pkg.version %>.uncompressed.zip'
+      archive: 'out/fotorama-<%= pkg.version %>.dev.zip'
     },
     files: [
-      {expand: true, cwd: 'out/', src: 'fotorama.uncompressed.css', dest: 'fotorama-<%= pkg.version %>.uncompressed/'},
-      {expand: true, cwd: 'out/', src: 'fotorama.uncompressed.js', dest: 'fotorama-<%= pkg.version %>.uncompressed/'},
-      {expand: true, cwd: 'out/', src: 'fotorama.png', dest: 'fotorama-<%= pkg.version %>.uncompressed/'},
-      {expand: true, cwd: 'out/', src: 'fotorama@2x.png', dest: 'fotorama-<%= pkg.version %>.uncompressed/'}
+      {expand: true, cwd: 'out/', src: 'fotorama.dev.css', dest: 'fotorama-<%= pkg.version %>.dev/'},
+      {expand: true, cwd: 'out/', src: 'fotorama.dev.js', dest: 'fotorama-<%= pkg.version %>.dev/'},
+      {expand: true, cwd: 'out/', src: 'fotorama.png', dest: 'fotorama-<%= pkg.version %>.dev/'},
+      {expand: true, cwd: 'out/', src: 'fotorama@2x.png', dest: 'fotorama-<%= pkg.version %>.dev/'}
     ]
   },
   min: {
@@ -283,9 +316,21 @@ s3: {
     upload: [
         // Separate version to separate folder
       {
-        src: 'out/*',
+        src: 'out/fotorama.*',
         dest: '<%= pkg.version %>/'
+      },
+      {
+        src: 'out/fotorama@2x.png',
+        dest: '<%= pkg.version %>/fotorama@2x.png'
+      },
+      {
+        src: 'out/*.zip',
+        dest: '<%= pkg.version %>/',
+        options: {
+          gzip: false
+        }
       }
+
     ]
   },
   edge: {
@@ -325,14 +370,18 @@ shell: {
   indexes: {
     command: './test/index.sh'
   },
+  cdnjs: {
+    command: 'cd ~/Projects/Clone/cdnjs/ ' +
+        '&& git add . ' +
+        '&& git commit -am \'Update Fotorama to <%= pkg.version %>\' ' +
+        '&& git pull cdnjs master ' +
+        '&& git push --progress origin master:master'
+  },
   commit: {
     command: 'git commit fotorama.jquery.json -m \'Tagging the <%= pkg.version %> release\''
   },
   push: {
     command: 'git push --tags --progress origin master:master'
-  },
-  publish: {
-    command: 'heroku config:add FOTORAMA_VERSION=<%= pkg.version %>'
   },
   bower: {
     command: 'cd .fotorama-bower ' +
@@ -340,13 +389,21 @@ shell: {
         '&& git commit -am \'Tagging the <%= pkg.version %> release\' ' +
         '&& git tag <%= pkg.version %> ' +
         '&& git push --tags --progress origin master:master'
+  },
+  heroku: {
+    command: 'heroku config:add FOTORAMA_VERSION=<%= pkg.version %> FOTORAMA_NEXT=<%= pkg.version %>'
   }
 },
 
 jasmine: grunt.file.readJSON('test/specs/_specs.json'),
 
 tweet: {
-  options: '<%= grunt.file.readJSON("secret.json").tweet %>',
+  options: {
+    consumer_key: '<%= grunt.file.readJSON("secret.json").tweet.consumer_key %>',
+    consumer_secret: '<%= grunt.file.readJSON("secret.json").tweet.consumer_secret %>',
+    access_token: '<%= grunt.file.readJSON("secret.json").tweet.access_token %>',
+    access_token_secret: '<%= grunt.file.readJSON("secret.json").tweet.access_token_secret %>'
+  },
   release: {
     options: {
       crop: true
@@ -366,11 +423,18 @@ gh_release: {
     tag_name: '<%= pkg.version %>', // required
     name: '<%= grunt.file.readJSON("history.json")[pkg.version + ":name"] %>',
     body: '<%= grunt.file.readJSON("history.json")[pkg.version + ":notes"] %>',
-    asset: {
-      name: 'fotorama-<%= pkg.version %>.zip',
-      file: 'out/fotorama-<%= pkg.version %>.zip',
-      'Content-Type': 'application/zip'
-    }
+    asset: [
+      {
+        name: 'fotorama-<%= pkg.version %>.zip',
+        file: 'out/fotorama-<%= pkg.version %>.zip',
+        'Content-Type': 'application/zip'
+      },
+      {
+        name: 'fotorama-<%= pkg.version %>.dev.zip',
+        file: 'out/fotorama-<%= pkg.version %>.dev.zip',
+        'Content-Type': 'application/zip'
+      }
+    ]
   }
 }
 });
@@ -395,14 +459,17 @@ grunt.loadNpmTasks('grunt-shell');
 grunt.loadNpmTasks('grunt-tweet');
 grunt.loadNpmTasks('grunt-gh-release');
 
-var defaultTask = 'copy:i sass autoprefixer jst replace:jst concat:js replace:console concat:css jasmine uglify cssmin jasmine clean copy:example compress';
-var build = 'copy:i sass autoprefixer jst replace:jst concat:js replace:console concat:css uglify cssmin clean copy:example compress'.split(' ');
+var defaultTask = 'copy:i sass autoprefixer jst replace:jst concat:js replace:console concat:css uglify cssmin jasmine clean copy:example compress';
+//var build = 'copy:i sass autoprefixer jst replace:jst concat:js replace:console concat:css uglify cssmin clean copy:example compress'.split(' ');
 
 // Compile
 grunt.registerTask('default', defaultTask.split(' '));
-grunt.registerTask('build', build);
-grunt.registerTask('look', 'copy:i sass autoprefixer jst replace:jst concat:js watch'.split(' '));
+//grunt.registerTask('build', build);
+//grunt.registerTask('look', 'copy:i sass autoprefixer jst replace:jst concat:js watch'.split(' '));
 
 // Publish, will fail without secret details ;-)
-grunt.registerTask('publish', (defaultTask + ' ' + 's3 copy:bower replace:version shell replace:history gh_release tweet').split(' '));
+grunt.registerTask('cdnjs', (defaultTask + ' s3 replace:version copy:cdnjs shell:cdnjs').split(' '));
+
+// Publish, will fail without secret details ;-)
+grunt.registerTask('publish', (defaultTask + ' s3 replace:version copy:bower shell:commit shell:push shell:bower shell:heroku replace:history gh_release tweet').split(' '));
 };
